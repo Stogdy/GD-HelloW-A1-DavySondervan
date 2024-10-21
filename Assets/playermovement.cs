@@ -2,57 +2,89 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class CharacterControllerScript : MonoBehaviour
+[RequireComponent(typeof(CharacterController))]
+public class PlayerMovement : MonoBehaviour
 {
-    public float moveSpeed = 5f;  // Speed of the character movement
-    public float jumpForce = 7f;  // Force applied for jumping
-    public float gravity = -9.81f;  // Gravity effect on the character
-    public float groundCheckDistance = 0.4f;  // Distance to check for ground
-    public LayerMask groundMask;  // Layer for ground detection
+    public Camera playerCamera;
+    public float walkSpeed = 6f;
+    public float runSpeed = 12f;
+    public float jumpPower = 7f;
+    public float gravity = 10f;
+    public float lookSpeed = 2f;  // Aangepast naar 2f voor meer zichtbare beweging
+    public float lookXLimit = 45f;
+    public float defaultHeight = 2f;
+    public float crouchHeight = 1f;
+    public float crouchSpeed = 3f;
 
-    private CharacterController controller;  // Reference to Unity's CharacterController component
-    private Vector3 velocity;  // Stores the player's movement direction
-    private bool isGrounded;  // To check if the character is on the ground
+    private Vector3 moveDirection = Vector3.zero;
+    private float rotationX = 0;
+    private CharacterController characterController;
 
-    public Transform groundCheck;  // Reference point for checking if grounded
+    private bool canMove = true;
 
     void Start()
     {
-        // Get the CharacterController component attached to the GameObject
-        controller = GetComponent<CharacterController>();
+        characterController = GetComponent<CharacterController>();
+        Cursor.lockState = CursorLockMode.Locked;  // Vergrendel cursor
+        Cursor.visible = false;                    // Maak cursor onzichtbaar
     }
 
     void Update()
     {
-        // Ground check: Create a small sphere below the player to check if grounded
-        isGrounded = Physics.CheckSphere(groundCheck.position, groundCheckDistance, groundMask);
+        // Beweging
+        Vector3 forward = transform.TransformDirection(Vector3.forward);
+        Vector3 right = transform.TransformDirection(Vector3.right);
 
-        // Reset velocity if the player is grounded
-        if (isGrounded && velocity.y < 0)
+        bool isRunning = Input.GetKey(KeyCode.LeftShift);
+        float curSpeedX = canMove ? (isRunning ? runSpeed : walkSpeed) * Input.GetAxis("Vertical") : 0;
+        float curSpeedY = canMove ? (isRunning ? runSpeed : walkSpeed) * Input.GetAxis("Horizontal") : 0;
+        float movementDirectionY = moveDirection.y;
+        moveDirection = (forward * curSpeedX) + (right * curSpeedY);
+
+        if (Input.GetButton("Jump") && canMove && characterController.isGrounded)
         {
-            velocity.y = -2f;  // Small negative value to keep the character grounded
+            moveDirection.y = jumpPower;
+        }
+        else
+        {
+            moveDirection.y = movementDirectionY;
         }
 
-        // Get input for movement
-        float moveX = Input.GetAxis("Horizontal");
-        float moveZ = Input.GetAxis("Vertical");
-
-        // Calculate movement direction based on input
-        Vector3 move = transform.right * moveX + transform.forward * moveZ;
-
-        // Move the character using the CharacterController
-        controller.Move(move * moveSpeed * Time.deltaTime);
-
-        // Jump: Check if the jump button is pressed and the character is grounded
-        if (Input.GetButtonDown("Jump") && isGrounded)
+        if (!characterController.isGrounded)
         {
-            velocity.y = Mathf.Sqrt(jumpForce * -2f * gravity);  // Calculate jump velocity
+            moveDirection.y -= gravity * Time.deltaTime;
         }
 
-        // Apply gravity
-        velocity.y += gravity * Time.deltaTime;
+        if (Input.GetKey(KeyCode.R) && canMove)
+        {
+            characterController.height = crouchHeight;
+            walkSpeed = crouchSpeed;
+            runSpeed = crouchSpeed;
+        }
+        else
+        {
+            characterController.height = defaultHeight;
+            walkSpeed = 6f;
+            runSpeed = 12f;
+        }
 
-        // Apply the velocity (gravity and jump)
-        controller.Move(velocity * Time.deltaTime);
+        characterController.Move(moveDirection * Time.deltaTime);
+
+        // Camera beweging
+        if (canMove)
+        {
+            float mouseX = Input.GetAxis("Mouse X") * lookSpeed;
+            float mouseY = Input.GetAxis("Mouse Y") * lookSpeed;
+
+            // Voor camera X rotatie (op/neer beweging)
+            rotationX -= mouseY;
+            rotationX = Mathf.Clamp(rotationX, -lookXLimit, lookXLimit);
+
+            // Pas rotatie aan op de camera
+            playerCamera.transform.localRotation = Quaternion.Euler(rotationX, 0, 0);
+
+            // Pas rotatie aan op de speler (alleen Y-as voor draaien)
+            transform.rotation *= Quaternion.Euler(0, mouseX, 0);
+        }
     }
 }
