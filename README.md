@@ -11,5 +11,10 @@ Welkom in mijn stad waar je rustig rond kan lopen of in autos kan rijden en de s
 
 *21-10-2024*
 
-- Er is playermovement toegevoegd in de wereld.
+- Er zijn assets toegevoegd. 
 
+*5-11-2024*
+
+- De speler kan nu bewegen en rondkijken.
+- Er zijn meer assets toegevoegd.
+- Er is een skydome met sterren en een maan toegevoegd.
